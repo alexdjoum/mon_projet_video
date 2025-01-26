@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  dowscale:
+    build: .
+    volumes:
+      - ./app:/project/app
+      - ./videos:/project/videos
+      - ./data:/project/data
+    command: python app/dowscale.py
+
+  detectlang:
+    build: .
+    volumes:
+      - ./app:/project/app
+      - ./videos:/project/videos
+      - ./data:/project/data
+    depends_on:
+      - dowscale
+    command: sh -c 'while [ ! -f /project/data/output_240p.mp4 ] || [ ! -f /project/data/output_360p.mp4 ] || [ ! -s /project/data/output_240p.mp4 ] || [ ! -s /project/data/output_360p.mp4 ] || ! ffmpeg -v error -i /project/data/output_240p.mp4 -f null - 2>/dev/null || ! ffmpeg -v error -i /project/data/output_360p.mp4 -f null - 2>/dev/null; do sleep 1; done && python app/detectlang.py'
+
+  subtitles:
+    build: .
+    volumes:
+      - ./app:/project/app
+      - ./videos:/project/videos
+      - ./data:/project/data
+    depends_on:
+      - detectlang
+    command: sh -c 'while [ ! -f /project/data/output_240p.mp4 ] || [ ! -f /project/data/output_360p.mp4 ] || [ ! -s /project/data/output_240p.mp4 ] || [ ! -s /project/data/output_360p.mp4 ] || [ ! -f /project/data/languages_detected/output_240p.mp4_langue.txt ] || [ ! -f /project/data/languages_detected/output_360p.mp4_langue.txt ] || [ ! -s /project/data/languages_detected/output_240p.mp4_langue.txt ] || [ ! -s /project/data/languages_detected/output_360p.mp4_langue.txt ]; do sleep 1; done && python app/subtitles.py'
+
+  transfertdata:
+    build: .
+    volumes:
+      - ./app:/project/app
+      - ./data:/project/data
+    depends_on:
+      - subtitles
+    command: sh -c 'while [ ! -f /project/data/output_240p.mp4 ] || [ ! -f /project/data/output_360p.mp4 ] || [ ! -s /project/data/output_240p.mp4 ] || [ ! -s /project/data/output_360p.mp4 ] || [ ! -f /project/data/languages_detected/output_240p.mp4_langue.txt ] || [ ! -f /project/data/languages_detected/output_360p.mp4_langue.txt ] || [ ! -s /project/data/languages_detected/output_240p.mp4_langue.txt ] || [ ! -s /project/data/languages_detected/output_360p.mp4_langue.txt ]; do sleep 1; done && python app/transfertData.py'
+
